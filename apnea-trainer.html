@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Apnea Trainer</title>
+<style>
+  :root {
+    --bg-deep: #050b14;
+    --bg: #0a1929;
+    --bg-soft: #0f2438;
+    --cyan: #00e5ff;
+    --cyan-soft: #4dd0e1;
+    --white: #ffffff;
+    --muted: #7a98b3;
+    --danger: #ff5577;
+    --ok: #4ade80;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at top, var(--bg) 0%, var(--bg-deep) 100%);
+    color: var(--white);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .header {
+    text-align: center;
+    padding: 12px 0 24px;
+  }
+
+  .logo {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(0, 229, 255, 0.35);
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .best {
+    background: var(--bg-soft);
+    border-radius: 16px;
+    padding: 14px 18px;
+    margin: 0 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid rgba(0, 229, 255, 0.1);
+  }
+
+  .best-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .best-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--cyan);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .modes {
+    display: grid;
+    gap: 12px;
+  }
+
+  .mode-card {
+    background: var(--bg-soft);
+    border: 1px solid rgba(0, 229, 255, 0.08);
+    border-radius: 16px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    color: var(--white);
+    font-family: inherit;
+    width: 100%;
+  }
+
+  .mode-card:hover, .mode-card:active {
+    border-color: var(--cyan);
+    background: rgba(0, 229, 255, 0.06);
+    transform: translateY(-1px);
+  }
+
+  .mode-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mode-title .tag {
+    font-size: 10px;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+    padding: 2px 8px;
+    border-radius: 99px;
+    letter-spacing: 1px;
+  }
+
+  .mode-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* Screens */
+  .screen { display: none; animation: fadeIn 0.3s ease; }
+  .screen.active { display: flex; flex-direction: column; flex: 1; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Session screen */
+  .session {
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+    flex: 1;
+    padding-top: 8px;
+  }
+
+  .phase-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+  }
+
+  .cycle-label {
+    font-size: 13px;
+    color: var(--cyan-soft);
+    margin-top: 6px;
+  }
+
+  .ring-wrapper {
+    position: relative;
+    width: min(320px, 80vw);
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 24px 0;
+  }
+
+  .ring-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .ring-bg { stroke: rgba(0, 229, 255, 0.08); fill: none; stroke-width: 6; }
+  .ring-fg {
+    stroke: var(--cyan);
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.4));
+    transition: stroke-dashoffset 0.3s linear;
+  }
+
+  .pulse-circle {
+    position: absolute;
+    width: 70%;
+    height: 70%;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(0, 229, 255, 0.25) 0%, rgba(0, 229, 255, 0.05) 50%, transparent 80%);
+    transition: transform 4s ease-in-out, opacity 0.5s ease;
+  }
+
+  .pulse-circle.breathe {
+    animation: breathe 8s ease-in-out infinite;
+  }
+
+  .pulse-circle.hold {
+    transform: scale(1);
+    background: radial-gradient(circle at center, rgba(0, 229, 255, 0.15) 0%, rgba(0, 229, 255, 0.02) 60%, transparent 90%);
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(0.7); }
+    50% { transform: scale(1.05); }
+  }
+
+  .timer-content {
+    position: relative;
+    z-index: 2;
+  }
+
+  .timer {
+    font-size: 64px;
+    font-weight: 200;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .timer.counting-up { color: var(--cyan); }
+
+  .guide {
+    margin-top: 8px;
+    font-size: 16px;
+    color: var(--cyan-soft);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    min-height: 24px;
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    margin-top: 24px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(0, 229, 255, 0.2);
+    background: var(--bg-soft);
+    color: var(--white);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn:hover, .btn:active {
+    background: rgba(0, 229, 255, 0.1);
+    border-color: var(--cyan);
+  }
+
+  .btn.primary {
+    background: var(--cyan);
+    color: var(--bg-deep);
+    border-color: var(--cyan);
+    box-shadow: 0 0 24px rgba(0, 229, 255, 0.3);
+  }
+
+  .btn.primary:hover, .btn.primary:active {
+    background: var(--cyan-soft);
+  }
+
+  .btn.danger {
+    border-color: rgba(255, 85, 119, 0.4);
+    color: var(--danger);
+  }
+
+  .btn.danger:hover {
+    background: rgba(255, 85, 119, 0.1);
+  }
+
+  .back-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 8px 0;
+    cursor: pointer;
+    font-family: inherit;
+    margin-bottom: 8px;
+    align-self: flex-start;
+  }
+
+  .back-btn:hover { color: var(--cyan); }
+
+  /* Custom form */
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--bg-soft);
+    border: 1px solid rgba(0, 229, 255, 0.15);
+    border-radius: 12px;
+    color: var(--white);
+    font-family: inherit;
+    font-size: 16px;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: var(--cyan);
+  }
+
+  /* Summary */
+  .summary {
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .summary-emoji {
+    font-size: 64px;
+    margin-bottom: 20px;
+  }
+
+  .summary-title {
+    font-size: 28px;
+    font-weight: 300;
+    margin-bottom: 8px;
+  }
+
+  .summary-msg {
+    color: var(--cyan-soft);
+    margin-bottom: 32px;
+    font-size: 14px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat {
+    background: var(--bg-soft);
+    border-radius: 14px;
+    padding: 18px;
+    border: 1px solid rgba(0, 229, 255, 0.08);
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--cyan);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Disclaimer overlay */
+  .disclaimer {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 11, 20, 0.96);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    backdrop-filter: blur(8px);
+  }
+
+  .disclaimer.hidden { display: none; }
+
+  .disclaimer-box {
+    background: transparent;
+    border: none;
+    padding: 40px 28px;
+    max-width: 380px;
+    text-align: center;
+  }
+
+  .disclaimer-mark {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--cyan-soft);
+    border-radius: 50%;
+    margin: 0 auto 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cyan-soft);
+    font-size: 14px;
+    font-weight: 300;
+    opacity: 0.7;
+  }
+
+  .disclaimer-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    color: var(--white);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .disclaimer-text {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 32px;
+    font-weight: 300;
+  }
+
+  .disclaimer-text strong {
+    color: var(--white);
+    font-weight: 500;
+  }
+
+  .disclaimer-box .btn {
+    background: transparent;
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    color: var(--cyan-soft);
+    font-weight: 400;
+    letter-spacing: 2px;
+  }
+
+  .disclaimer-box .btn:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: transparent;
+  }
+
+  .footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 24px;
+    letter-spacing: 1px;
+  }
+
+  /* Preview */
+  .preview-header {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  .preview-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--cyan);
+    letter-spacing: 2px;
+  }
+
+  .preview-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  .preview-summary {
+    background: var(--bg-soft);
+    border: 1px solid rgba(0, 229, 255, 0.12);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    text-align: center;
+  }
+
+  .preview-summary .cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .preview-summary .k {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  .preview-summary .v {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--cyan);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cycles-list {
+    background: var(--bg-soft);
+    border: 1px solid rgba(0, 229, 255, 0.08);
+    border-radius: 14px;
+    padding: 8px 4px;
+    margin-bottom: 16px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .cycles-list::-webkit-scrollbar { width: 4px; }
+  .cycles-list::-webkit-scrollbar-thumb { background: rgba(0, 229, 255, 0.3); border-radius: 4px; }
+
+  .cycle-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr;
+    padding: 10px 14px;
+    font-size: 13px;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 229, 255, 0.05);
+  }
+
+  .cycle-row:last-child { border-bottom: none; }
+
+  .cycle-row .num {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  .cycle-row .hold {
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  .cycle-row .rest {
+    color: var(--cyan-soft);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    font-size: 12px;
+  }
+
+  .cycle-row .hold::before {
+    content: "⏸  ";
+    opacity: 0.6;
+  }
+
+  .cycle-row .rest::before {
+    content: "🌬  ";
+    opacity: 0.6;
+  }
+
+  .cycle-header {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr;
+    padding: 8px 14px;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    border-bottom: 1px solid rgba(0, 229, 255, 0.1);
+  }
+
+  .cycle-header .rest { text-align: right; }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .config-grid .form-group { margin-bottom: 0; }
+  .config-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+
+  .form-input.compact {
+    padding: 10px 12px;
+    font-size: 14px;
+    text-align: center;
+  }
+
+  .form-label.compact {
+    font-size: 10px;
+    margin-bottom: 4px;
+    letter-spacing: 1.5px;
+  }
+
+  /* Definitions */
+  .defs-intro {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .def-group {
+    margin-bottom: 24px;
+  }
+
+  .def-group-title {
+    font-size: 11px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+
+  .def-item {
+    background: var(--bg-soft);
+    border: 1px solid rgba(0, 229, 255, 0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+
+  .def-term {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .def-term .alt {
+    font-size: 11px;
+    color: var(--cyan-soft);
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  .def-text {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .def-text em {
+    color: var(--cyan-soft);
+    font-style: normal;
+  }
+
+  .def-tag {
+    display: inline-block;
+    font-size: 9px;
+    background: rgba(255, 85, 119, 0.15);
+    color: var(--danger);
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+
+  <!-- Home -->
+  <div class="screen active" id="screen-home">
+    <div class="header">
+      <div class="logo">APNEA</div>
+      <div class="subtitle">Breath Training</div>
+    </div>
+
+    <div class="best">
+      <div>
+        <div class="best-label">Meilleur hold</div>
+      </div>
+      <div class="best-value" id="bestTime">--:--</div>
+    </div>
+
+    <div class="modes">
+      <button class="mode-card" onclick="openMode('co2')">
+        <div class="mode-title">CO₂ Table</div>
+        <div class="mode-desc">Repos décroissant, apnée fixe. Augmente ta tolérance au CO₂.</div>
+      </button>
+      <button class="mode-card" onclick="openMode('o2')">
+        <div class="mode-title">O₂ Table</div>
+        <div class="mode-desc">Apnée croissante, repos fixe. Tolérance à l'hypoxie.</div>
+      </button>
+      <button class="mode-card" onclick="openMode('max')">
+        <div class="mode-title">Max Hold</div>
+        <div class="mode-desc">Chronomètre libre pour battre ton record personnel.</div>
+      </button>
+      <button class="mode-card" onclick="showScreen('screen-custom')">
+        <div class="mode-title">Custom Session</div>
+        <div class="mode-desc">Définis ton propre protocole d'entraînement.</div>
+      </button>
+      <button class="mode-card" onclick="showScreen('screen-defs')">
+        <div class="mode-title">Définitions</div>
+        <div class="mode-desc">Termes clés de l'apnée : hypoxie, CO₂, réflexe d'immersion…</div>
+      </button>
+    </div>
+
+    <div class="footer">Inspire. Retiens. Libère.</div>
+  </div>
+
+  <!-- Definitions -->
+  <div class="screen" id="screen-defs">
+    <button class="back-btn" onclick="showScreen('screen-home')">← Retour</button>
+    <div class="preview-header">
+      <div class="preview-title">LEXIQUE</div>
+      <div class="preview-sub">Les termes de l'apnée</div>
+    </div>
+
+    <div class="defs-intro">
+      Comprendre ces notions aide à pratiquer en sécurité et à progresser.
+    </div>
+
+    <div class="def-group">
+      <div class="def-group-title">Physiologie</div>
+
+      <div class="def-item">
+        <div class="def-term">Hypoxie</div>
+        <div class="def-text">Baisse du taux d'<em>oxygène (O₂)</em> dans le sang. C'est la véritable cause de la perte de connaissance en apnée. Paradoxalement, ce n'est pas elle qui déclenche le besoin de respirer.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Hypercapnie</div>
+        <div class="def-text">Accumulation de <em>CO₂</em> (dioxyde de carbone) dans le sang. C'est elle qui crée l'envie de respirer et les contractions diaphragmatiques. Apprendre à la tolérer est le cœur de l'entraînement au CO₂.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Réflexe d'immersion <span class="alt">Mammalian Dive Reflex</span></div>
+        <div class="def-text">Réponse physiologique automatique déclenchée par le froid sur le visage et l'apnée : ralentissement du cœur (bradycardie), vasoconstriction périphérique, contraction de la rate. Il économise l'oxygène.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Bradycardie</div>
+        <div class="def-text">Ralentissement du rythme cardiaque. En apnée, le cœur peut descendre en dessous de 40 bpm, ce qui réduit la consommation d'O₂.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Contractions diaphragmatiques</div>
+        <div class="def-text">Spasmes involontaires du diaphragme provoqués par la hausse du CO₂. Elles marquent le début de la <em>phase de lutte</em>, mais ne signifient pas qu'il faut arrêter : l'O₂ est encore largement disponible.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Rate <span class="alt">Spleen</span></div>
+        <div class="def-text">Organe qui libère des globules rouges supplémentaires lors d'apnées répétées, augmentant temporairement la capacité de transport de l'O₂. C'est l'un des bénéfices de l'entraînement régulier.</div>
+      </div>
+    </div>
+
+    <div class="def-group">
+      <div class="def-group-title">Phases d'une apnée</div>
+
+      <div class="def-item">
+        <div class="def-term">Breathe-up <span class="alt">Ventilation préparatoire</span></div>
+        <div class="def-text">Respiration lente et calme précédant l'apnée. Objectif : détendre le corps, <em>sans</em> hyperventiler. L'hyperventilation masque le besoin de respirer et augmente le risque de syncope.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Phase facile</div>
+        <div class="def-text">Début de l'apnée où le CO₂ n'est pas encore gênant. Aucune contraction, sensation relativement confortable.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Phase de lutte</div>
+        <div class="def-text">Après les premières contractions. Le corps réclame de respirer mais l'O₂ reste suffisant. C'est là que se joue la progression : rester détendu mentalement.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Récupération <span class="alt">Recovery breathing</span></div>
+        <div class="def-text">Expiration courte puis inspirations amples et hook breaths (inspirer, bloquer un instant, souffler) pour ré-oxygéner rapidement après une apnée longue.</div>
+      </div>
+    </div>
+
+    <div class="def-group">
+      <div class="def-group-title">Entraînement</div>
+
+      <div class="def-item">
+        <div class="def-term">Table de CO₂</div>
+        <div class="def-text">Série d'apnées de <em>durée fixe</em> avec des temps de repos <em>décroissants</em>. Le corps apprend à tolérer un CO₂ de plus en plus élevé.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Table d'O₂</div>
+        <div class="def-text">Série d'apnées <em>de plus en plus longues</em> avec un repos fixe. Le corps apprend à fonctionner avec un O₂ de plus en plus bas.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Max Hold <span class="alt">PB — Personal Best</span></div>
+        <div class="def-text">Apnée maximale, généralement tentée une seule fois dans la séance, après un protocole de préparation. Sert à mesurer la progression.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Apnée statique <span class="alt">STA</span></div>
+        <div class="def-text">Retenir sa respiration en position immobile (assis ou flottant en surface). C'est la discipline reine pour travailler la tolérance au CO₂ et à l'hypoxie.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Apnée dynamique <span class="alt">DYN / DNF</span></div>
+        <div class="def-text">Apnée en déplacement horizontal sous l'eau, avec (DYN) ou sans (DNF) palmes. Mesurée en distance.</div>
+      </div>
+    </div>
+
+    <div class="def-group">
+      <div class="def-group-title">Sécurité</div>
+
+      <div class="def-item">
+        <div class="def-term">Syncope <span class="alt">Black-out (BO)</span><span class="def-tag">Danger</span></div>
+        <div class="def-text">Perte de connaissance due à l'hypoxie. Elle peut survenir <em>sans signe avant-coureur</em>. Dans l'eau, elle est mortelle sans partenaire. Ne jamais pratiquer l'apnée aquatique seul.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Samba <span class="alt">LMC — Loss of Motor Control</span><span class="def-tag">Alerte</span></div>
+        <div class="def-text">Perte partielle du contrôle moteur (tremblements, convulsions légères) en fin d'apnée. Signe que l'O₂ était <em>trop bas</em> : il faut réduire l'intensité.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Hyperventilation <span class="def-tag">À éviter</span></div>
+        <div class="def-text">Respirer trop vite ou trop fort avant une apnée. Évacue le CO₂ et <em>retarde l'envie de respirer sans augmenter l'O₂</em>. Augmente fortement le risque de syncope sans signe d'alerte.</div>
+      </div>
+
+      <div class="def-item">
+        <div class="def-term">Packing <span class="alt">Carpe</span><span class="def-tag">Avancé</span></div>
+        <div class="def-text">Technique d'inspiration forcée pour ajouter de l'air après une inspiration maximale. Utilisée par les apnéistes expérimentés uniquement — risques pulmonaires et de syncope.</div>
+      </div>
+    </div>
+
+    <button class="btn" onclick="showScreen('screen-home')" style="margin-top:8px">Retour à l'accueil</button>
+  </div>
+
+  <!-- Custom -->
+  <div class="screen" id="screen-custom">
+    <button class="back-btn" onclick="showScreen('screen-home')">← Retour</button>
+    <div class="header">
+      <div class="logo" style="font-size:22px">CUSTOM SESSION</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nombre de cycles</label>
+      <input class="form-input" type="number" id="cfgCycles" value="6" min="1" max="20">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Durée d'apnée (secondes)</label>
+      <input class="form-input" type="number" id="cfgHold" value="60" min="5" max="600">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Durée de repos (secondes)</label>
+      <input class="form-input" type="number" id="cfgRest" value="90" min="5" max="600">
+    </div>
+    <button class="btn primary" onclick="startCustom()" style="margin-top:12px">Démarrer</button>
+  </div>
+
+  <!-- Preview (CO2 / O2 Tables) -->
+  <div class="screen" id="screen-preview">
+    <button class="back-btn" onclick="showScreen('screen-home')">← Retour</button>
+    <div class="preview-header">
+      <div class="preview-title" id="previewTitle">CO₂ TABLE</div>
+      <div class="preview-sub" id="previewSub">Tolérance au CO₂</div>
+    </div>
+
+    <div id="previewConfig"></div>
+
+    <div class="preview-summary" id="previewSummary"></div>
+
+    <div class="cycle-header">
+      <div class="num">#</div>
+      <div class="hold">Apnée</div>
+      <div class="rest">Repos</div>
+    </div>
+    <div class="cycles-list" id="cyclesList"></div>
+
+    <button class="btn primary" onclick="startFromPreview()">Démarrer la session</button>
+  </div>
+
+  <!-- Session -->
+  <div class="screen" id="screen-session">
+    <div class="session">
+      <div>
+        <div class="phase-label" id="phaseLabel">Prepare</div>
+        <div class="cycle-label" id="cycleLabel">—</div>
+      </div>
+      <div class="ring-wrapper">
+        <svg class="ring-svg" viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="94"/>
+          <circle class="ring-fg" id="ringFg" cx="100" cy="100" r="94"
+                  stroke-dasharray="590.6" stroke-dashoffset="0"/>
+        </svg>
+        <div class="pulse-circle" id="pulseCircle"></div>
+        <div class="timer-content">
+          <div class="timer" id="timer">00:00</div>
+          <div class="guide" id="guide">—</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="pauseBtn" onclick="togglePause()">Pause</button>
+        <button class="btn danger" onclick="stopSession()">Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="screen" id="screen-summary">
+    <div class="summary">
+      <div class="summary-emoji" id="summaryEmoji">🌊</div>
+      <div class="summary-title">Session terminée</div>
+      <div class="summary-msg" id="summaryMsg">Bien joué, respire tranquillement.</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Cycles</div>
+          <div class="stat-value" id="statCycles">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Temps retenu</div>
+          <div class="stat-value" id="statTotal">0:00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Meilleur hold</div>
+          <div class="stat-value" id="statBest">0:00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Mode</div>
+          <div class="stat-value" id="statMode" style="font-size:16px">—</div>
+        </div>
+      </div>
+      <button class="btn primary" onclick="showScreen('screen-home')">Retour à l'accueil</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---------- State ----------
+  const state = {
+    bestEver: 0,
+    session: null,
+    paused: false,
+    audioCtx: null,
+  };
+
+  // ---------- Utilities ----------
+  function fmt(seconds) {
+    seconds = Math.max(0, Math.floor(seconds));
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function dismissDisclaimer() {
+    document.getElementById('disclaimer').classList.add('hidden');
+  }
+
+  // ---------- Audio ----------
+  function ensureAudio() {
+    if (!state.audioCtx) {
+      try { state.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) {}
+    }
+    if (state.audioCtx && state.audioCtx.state === 'suspended') state.audioCtx.resume();
+  }
+
+  function beep(frequency = 440, duration = 0.3, type = 'sine', volume = 0.15) {
+    ensureAudio();
+    if (!state.audioCtx) return;
+    const ctx = state.audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = frequency;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const t = ctx.currentTime;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(volume, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
+
+  function gong() {
+    beep(220, 0.6, 'sine', 0.2);
+    setTimeout(() => beep(330, 0.5, 'sine', 0.12), 80);
+  }
+
+  function softBeep() { beep(660, 0.15, 'sine', 0.1); }
+
+  function vibrate(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  // ---------- Modes ----------
+  const previewCfg = { mode: null, cycles: 8, hold: 60, restStart: 120, restEnd: 15, holdStart: 60, holdEnd: 165, rest: 120 };
+
+  function openMode(mode) {
+    if (mode === 'co2' || mode === 'o2') {
+      previewCfg.mode = mode;
+      previewCfg.cycles = 8;
+      if (mode === 'co2') {
+        previewCfg.hold = 60;
+        previewCfg.restStart = 120;
+        previewCfg.restEnd = 15;
+      } else {
+        previewCfg.holdStart = 60;
+        previewCfg.holdEnd = 165;
+        previewCfg.rest = 120;
+      }
+      renderPreview();
+      showScreen('screen-preview');
+    } else if (mode === 'max') {
+      const phases = [
+        { type: 'prepare', duration: 10 },
+        { type: 'max-hold' }
+      ];
+      startSession({ name: 'Max Hold', phases });
+    }
+  }
+
+  // Build the phases array for CO2 or O2 based on previewCfg
+  function buildPhasesFromPreview() {
+    const cycles = Math.max(1, Math.min(20, parseInt(previewCfg.cycles) || 8));
+    const phases = [{ type: 'prepare', duration: 10 }];
+    const rows = [];
+
+    if (previewCfg.mode === 'co2') {
+      const hold = Math.max(5, parseInt(previewCfg.hold) || 60);
+      const rStart = Math.max(5, parseInt(previewCfg.restStart) || 120);
+      const rEnd = Math.max(5, parseInt(previewCfg.restEnd) || 15);
+      for (let i = 0; i < cycles; i++) {
+        const t = cycles === 1 ? 0 : i / (cycles - 1);
+        const rest = Math.round(rStart + (rEnd - rStart) * t);
+        phases.push({ type: 'hold', duration: hold, cycle: i + 1, total: cycles });
+        if (i < cycles - 1) phases.push({ type: 'rest', duration: rest, cycle: i + 1, total: cycles });
+        rows.push({ n: i + 1, hold, rest: i < cycles - 1 ? rest : null });
+      }
+      return { name: 'CO₂ Table', phases, rows };
+    } else {
+      const hStart = Math.max(5, parseInt(previewCfg.holdStart) || 60);
+      const hEnd = Math.max(5, parseInt(previewCfg.holdEnd) || 165);
+      const rest = Math.max(5, parseInt(previewCfg.rest) || 120);
+      for (let i = 0; i < cycles; i++) {
+        const t = cycles === 1 ? 0 : i / (cycles - 1);
+        const hold = Math.round(hStart + (hEnd - hStart) * t);
+        phases.push({ type: 'hold', duration: hold, cycle: i + 1, total: cycles });
+        if (i < cycles - 1) phases.push({ type: 'rest', duration: rest, cycle: i + 1, total: cycles });
+        rows.push({ n: i + 1, hold, rest: i < cycles - 1 ? rest : null });
+      }
+      return { name: 'O₂ Table', phases, rows };
+    }
+  }
+
+  function renderPreview() {
+    const isCO2 = previewCfg.mode === 'co2';
+    document.getElementById('previewTitle').textContent = isCO2 ? 'CO₂ TABLE' : 'O₂ TABLE';
+    document.getElementById('previewSub').textContent = isCO2
+      ? 'Apnée fixe, repos décroissant — tolérance au CO₂'
+      : 'Apnée croissante, repos fixe — tolérance à l\'hypoxie';
+
+    // Config inputs
+    const cfgEl = document.getElementById('previewConfig');
+    if (isCO2) {
+      cfgEl.innerHTML = `
+        <div class="config-grid">
+          <div class="form-group">
+            <label class="form-label compact">Cycles</label>
+            <input class="form-input compact" type="number" min="1" max="20"
+                   value="${previewCfg.cycles}" oninput="updatePreview('cycles', this.value)">
+          </div>
+          <div class="form-group">
+            <label class="form-label compact">Apnée (s)</label>
+            <input class="form-input compact" type="number" min="5" max="600"
+                   value="${previewCfg.hold}" oninput="updatePreview('hold', this.value)">
+          </div>
+        </div>
+        <div class="config-grid">
+          <div class="form-group">
+            <label class="form-label compact">Repos début (s)</label>
+            <input class="form-input compact" type="number" min="5" max="600"
+                   value="${previewCfg.restStart}" oninput="updatePreview('restStart', this.value)">
+          </div>
+          <div class="form-group">
+            <label class="form-label compact">Repos fin (s)</label>
+            <input class="form-input compact" type="number" min="5" max="600"
+                   value="${previewCfg.restEnd}" oninput="updatePreview('restEnd', this.value)">
+          </div>
+        </div>
+      `;
+    } else {
+      cfgEl.innerHTML = `
+        <div class="config-grid">
+          <div class="form-group">
+            <label class="form-label compact">Cycles</label>
+            <input class="form-input compact" type="number" min="1" max="20"
+                   value="${previewCfg.cycles}" oninput="updatePreview('cycles', this.value)">
+          </div>
+          <div class="form-group">
+            <label class="form-label compact">Repos (s)</label>
+            <input class="form-input compact" type="number" min="5" max="600"
+                   value="${previewCfg.rest}" oninput="updatePreview('rest', this.value)">
+          </div>
+        </div>
+        <div class="config-grid">
+          <div class="form-group">
+            <label class="form-label compact">Apnée début (s)</label>
+            <input class="form-input compact" type="number" min="5" max="600"
+                   value="${previewCfg.holdStart}" oninput="updatePreview('holdStart', this.value)">
+          </div>
+          <div class="form-group">
+            <label class="form-label compact">Apnée fin (s)</label>
+            <input class="form-input compact" type="number" min="5" max="600"
+                   value="${previewCfg.holdEnd}" oninput="updatePreview('holdEnd', this.value)">
+          </div>
+        </div>
+      `;
+    }
+
+    // Build and render cycles list
+    const built = buildPhasesFromPreview();
+    const listEl = document.getElementById('cyclesList');
+    listEl.innerHTML = built.rows.map(r => `
+      <div class="cycle-row">
+        <div class="num">${String(r.n).padStart(2, '0')}</div>
+        <div class="hold">${fmt(r.hold)}</div>
+        <div class="rest">${r.rest !== null ? fmt(r.rest) : '—'}</div>
+      </div>
+    `).join('');
+
+    // Summary
+    const totalHold = built.rows.reduce((a, r) => a + r.hold, 0);
+    const totalRest = built.rows.reduce((a, r) => a + (r.rest || 0), 0);
+    const totalDuration = totalHold + totalRest + 10; // +10s prepare
+    document.getElementById('previewSummary').innerHTML = `
+      <div class="cell"><div class="k">Apnée totale</div><div class="v">${fmt(totalHold)}</div></div>
+      <div class="cell"><div class="k">Repos total</div><div class="v">${fmt(totalRest)}</div></div>
+      <div class="cell"><div class="k">Durée session</div><div class="v">${fmt(totalDuration)}</div></div>
+    `;
+  }
+
+  function updatePreview(key, value) {
+    previewCfg[key] = value;
+    // Only re-render the list & summary, not the inputs (to keep focus)
+    const built = buildPhasesFromPreview();
+    const listEl = document.getElementById('cyclesList');
+    listEl.innerHTML = built.rows.map(r => `
+      <div class="cycle-row">
+        <div class="num">${String(r.n).padStart(2, '0')}</div>
+        <div class="hold">${fmt(r.hold)}</div>
+        <div class="rest">${r.rest !== null ? fmt(r.rest) : '—'}</div>
+      </div>
+    `).join('');
+    const totalHold = built.rows.reduce((a, r) => a + r.hold, 0);
+    const totalRest = built.rows.reduce((a, r) => a + (r.rest || 0), 0);
+    const totalDuration = totalHold + totalRest + 10;
+    document.getElementById('previewSummary').innerHTML = `
+      <div class="cell"><div class="k">Apnée totale</div><div class="v">${fmt(totalHold)}</div></div>
+      <div class="cell"><div class="k">Repos total</div><div class="v">${fmt(totalRest)}</div></div>
+      <div class="cell"><div class="k">Durée session</div><div class="v">${fmt(totalDuration)}</div></div>
+    `;
+  }
+
+  function startFromPreview() {
+    const built = buildPhasesFromPreview();
+    startSession({ name: built.name, phases: built.phases });
+  }
+
+  function startCustom() {
+    const cycles = parseInt(document.getElementById('cfgCycles').value) || 6;
+    const hold = parseInt(document.getElementById('cfgHold').value) || 60;
+    const rest = parseInt(document.getElementById('cfgRest').value) || 90;
+    const phases = [{ type: 'prepare', duration: 10 }];
+    for (let i = 0; i < cycles; i++) {
+      phases.push({ type: 'hold', duration: hold, cycle: i + 1, total: cycles });
+      if (i < cycles - 1) phases.push({ type: 'rest', duration: rest, cycle: i + 1, total: cycles });
+    }
+    startSession({ name: 'Custom', phases });
+  }
+
+  // ---------- Session runner ----------
+  function startSession(cfg) {
+    ensureAudio();
+    state.session = {
+      cfg,
+      phaseIdx: 0,
+      phaseStart: performance.now(),
+      holds: [],
+      totalHoldTime: 0,
+      completedCycles: 0,
+    };
+    state.paused = false;
+    document.getElementById('pauseBtn').textContent = 'Pause';
+    showScreen('screen-session');
+    tick();
+    if (state.session._raf) cancelAnimationFrame(state.session._raf);
+    loop();
+  }
+
+  function currentPhase() {
+    if (!state.session) return null;
+    return state.session.cfg.phases[state.session.phaseIdx];
+  }
+
+  function loop() {
+    if (!state.session) return;
+    tick();
+    state.session._raf = requestAnimationFrame(loop);
+  }
+
+  function tick() {
+    if (!state.session || state.paused) return;
+    const phase = currentPhase();
+    if (!phase) return;
+
+    const elapsed = (performance.now() - state.session.phaseStart) / 1000;
+    const timerEl = document.getElementById('timer');
+    const phaseLabel = document.getElementById('phaseLabel');
+    const cycleLabel = document.getElementById('cycleLabel');
+    const guide = document.getElementById('guide');
+    const pulse = document.getElementById('pulseCircle');
+    const ring = document.getElementById('ringFg');
+
+    const circumference = 2 * Math.PI * 94;
+    ring.setAttribute('stroke-dasharray', circumference);
+
+    if (phase.type === 'prepare') {
+      const remain = phase.duration - elapsed;
+      phaseLabel.textContent = 'Prepare';
+      cycleLabel.textContent = 'Installe-toi confortablement';
+      timerEl.textContent = fmt(remain);
+      timerEl.classList.remove('counting-up');
+      guide.textContent = 'Breathe up';
+      pulse.className = 'pulse-circle breathe';
+      ring.setAttribute('stroke-dashoffset', circumference * (1 - (phase.duration - remain) / phase.duration));
+      if (remain <= 0) { softBeep(); vibrate(100); advancePhase(); }
+    }
+    else if (phase.type === 'rest') {
+      const remain = phase.duration - elapsed;
+      phaseLabel.textContent = 'Recover';
+      cycleLabel.textContent = `Cycle ${phase.cycle}/${phase.total} — repos`;
+      timerEl.textContent = fmt(remain);
+      timerEl.classList.remove('counting-up');
+      guide.textContent = 'Breathe';
+      pulse.className = 'pulse-circle breathe';
+      ring.setAttribute('stroke-dashoffset', circumference * (1 - (phase.duration - remain) / phase.duration));
+      if (remain <= 0) { gong(); vibrate([200, 100, 200]); advancePhase(); }
+    }
+    else if (phase.type === 'hold') {
+      const remain = phase.duration - elapsed;
+      phaseLabel.textContent = 'Hold';
+      cycleLabel.textContent = `Cycle ${phase.cycle}/${phase.total} — apnée`;
+      timerEl.textContent = fmt(remain);
+      timerEl.classList.remove('counting-up');
+      guide.textContent = 'Hold your breath';
+      pulse.className = 'pulse-circle hold';
+      ring.setAttribute('stroke-dashoffset', circumference * (1 - (phase.duration - remain) / phase.duration));
+      if (remain <= 0) {
+        gong();
+        vibrate([300, 100, 300]);
+        state.session.holds.push(phase.duration);
+        state.session.totalHoldTime += phase.duration;
+        state.session.completedCycles++;
+        advancePhase();
+      }
+    }
+    else if (phase.type === 'max-hold') {
+      phaseLabel.textContent = 'Max Hold';
+      cycleLabel.textContent = 'Appuie sur Stop quand tu craques';
+      timerEl.textContent = fmt(elapsed);
+      timerEl.classList.add('counting-up');
+      guide.textContent = 'Hold';
+      pulse.className = 'pulse-circle hold';
+      ring.setAttribute('stroke-dashoffset', 0);
+    }
+  }
+
+  function advancePhase() {
+    if (!state.session) return;
+    state.session.phaseIdx++;
+    state.session.phaseStart = performance.now();
+    if (state.session.phaseIdx >= state.session.cfg.phases.length) finishSession();
+  }
+
+  function togglePause() {
+    if (!state.session) return;
+    state.paused = !state.paused;
+    if (state.paused) {
+      state.session._pauseAt = performance.now();
+      document.getElementById('pauseBtn').textContent = 'Reprendre';
+    } else {
+      const delta = performance.now() - state.session._pauseAt;
+      state.session.phaseStart += delta;
+      document.getElementById('pauseBtn').textContent = 'Pause';
+    }
+  }
+
+  function stopSession() {
+    if (!state.session) return;
+    const phase = currentPhase();
+    if (phase && phase.type === 'max-hold') {
+      const elapsed = (performance.now() - state.session.phaseStart) / 1000;
+      state.session.holds.push(Math.floor(elapsed));
+      state.session.totalHoldTime += Math.floor(elapsed);
+      state.session.completedCycles = 1;
+    }
+    finishSession();
+  }
+
+  function finishSession() {
+    if (!state.session) return;
+    cancelAnimationFrame(state.session._raf);
+    const s = state.session;
+    const best = s.holds.length ? Math.max(...s.holds) : 0;
+    if (best > state.bestEver) state.bestEver = best;
+    document.getElementById('bestTime').textContent = state.bestEver ? fmt(state.bestEver) : '--:--';
+    document.getElementById('statCycles').textContent = s.completedCycles;
+    document.getElementById('statTotal').textContent = fmt(s.totalHoldTime);
+    document.getElementById('statBest').textContent = fmt(best);
+    document.getElementById('statMode').textContent = s.cfg.name;
+    const emoji = document.getElementById('summaryEmoji');
+    const msg = document.getElementById('summaryMsg');
+    if (best >= 120) { emoji.textContent = '🐋'; msg.textContent = 'Performance remarquable. Respire et savoure.'; }
+    else if (best >= 60) { emoji.textContent = '🌊'; msg.textContent = 'Belle session. La progression est là.'; }
+    else { emoji.textContent = '💨'; msg.textContent = 'Un pas de plus. Continue régulièrement.'; }
+    state.session = null;
+    showScreen('screen-summary');
+  }
+</script>
+</body>
+</html>
