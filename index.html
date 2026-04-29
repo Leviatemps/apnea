@@ -2,8 +2,17 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Apnea Trainer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<title>Paean — Apnea Trainer</title>
+<meta name="description" content="Entraînement à l'apnée statique : tables CO₂/O₂, Max Hold, sessions personnalisées." />
+<meta name="theme-color" content="#0a1929" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Paean" />
 <style>
   :root {
     --bg-deep: #050b14;
@@ -1346,6 +1355,13 @@
     else { emoji.textContent = '💨'; msg.textContent = 'Un pas de plus. Continue régulièrement.'; }
     state.session = null;
     showScreen('screen-summary');
+  }
+
+  // ---------- PWA — service worker ----------
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
   }
 </script>
 </body>
