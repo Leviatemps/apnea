@@ -476,6 +476,92 @@
     letter-spacing: 1px;
   }
 
+  /* Bottom navigation */
+  #screen-home { padding-bottom: 90px; }
+
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(10, 25, 41, 0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(0, 229, 255, 0.08);
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 50;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .nav-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--muted);
+    padding: 6px 4px;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.2s ease;
+    position: relative;
+  }
+
+  .nav-tab svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .nav-tab .nav-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .nav-tab.active {
+    color: var(--cyan);
+  }
+
+  .nav-tab.active::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    width: 24px;
+    height: 2px;
+    background: var(--cyan);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--cyan);
+  }
+
+  .tab-pane {
+    display: none;
+    animation: fadeIn 0.25s ease;
+  }
+
+  .tab-pane.active {
+    display: block;
+  }
+
+  .tab-section-title {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    margin: 0 4px 12px;
+  }
+
   /* Preview */
   .preview-header {
     text-align: center;
@@ -707,34 +793,85 @@
       <div class="best-value" id="bestTime">--:--</div>
     </div>
 
-    <div class="modes">
-      <button class="mode-card" onclick="openMode('co2')">
-        <div class="mode-title">CO₂ Table</div>
-        <div class="mode-desc">Repos décroissant, apnée fixe. Augmente ta tolérance au CO₂.</div>
-      </button>
-      <button class="mode-card" onclick="openMode('o2')">
-        <div class="mode-title">O₂ Table</div>
-        <div class="mode-desc">Apnée croissante, repos fixe. Tolérance à l'hypoxie.</div>
-      </button>
-      <button class="mode-card" onclick="openMode('max')">
-        <div class="mode-title">Max Hold</div>
-        <div class="mode-desc">Chronomètre libre pour battre ton record personnel.</div>
-      </button>
-      <button class="mode-card" onclick="showScreen('screen-warmup')">
-        <div class="mode-title">Échauffement</div>
-        <div class="mode-desc">Exercices guidés pour préparer ton corps avant l'apnée.</div>
-      </button>
-      <button class="mode-card" onclick="showScreen('screen-custom')">
-        <div class="mode-title">Custom Session</div>
-        <div class="mode-desc">Définis ton propre protocole d'entraînement.</div>
-      </button>
-      <button class="mode-card" onclick="showScreen('screen-defs')">
-        <div class="mode-title">Définitions</div>
-        <div class="mode-desc">Termes clés de l'apnée : hypoxie, CO₂, réflexe d'immersion…</div>
-      </button>
+    <!-- Tab : Préparer -->
+    <div class="tab-pane" id="tab-prepare">
+      <div class="tab-section-title">Échauffement guidé</div>
+      <div class="modes">
+        <button class="mode-card" onclick="startWarmup('full')">
+          <div class="mode-title">Routine complète <span class="tag">~12 min</span></div>
+          <div class="mode-desc">Enchaîne respiration, étirements, breath-up et apnées progressives.</div>
+        </button>
+        <button class="mode-card" onclick="startWarmup('diaphragm')">
+          <div class="mode-title">Respiration diaphragmatique <span class="tag">3 min</span></div>
+          <div class="mode-desc">Inspire 4 s, expire 6 s. Active le réflexe parasympathique.</div>
+        </button>
+        <button class="mode-card" onclick="startWarmup('stretch')">
+          <div class="mode-title">Étirement thoracique <span class="tag">2 min</span></div>
+          <div class="mode-desc">Inspire à fond, retiens 10 s en pliant sur le côté.</div>
+        </button>
+        <button class="mode-card" onclick="startWarmup('box')">
+          <div class="mode-title">Respiration carrée <span class="tag">3 min</span></div>
+          <div class="mode-desc">4 - 4 - 4 - 4. Calme le système nerveux.</div>
+        </button>
+        <button class="mode-card" onclick="startWarmup('progressive')">
+          <div class="mode-title">Apnées progressives <span class="tag">4 min</span></div>
+          <div class="mode-desc">3 paliers (30 s, 45 s, 60 s) pour réveiller le réflexe d'immersion.</div>
+        </button>
+      </div>
     </div>
 
-    <div class="footer">Inspire. Retiens. Libère.</div>
+    <!-- Tab : Pratiquer -->
+    <div class="tab-pane active" id="tab-practice">
+      <div class="tab-section-title">Tables d'entraînement</div>
+      <div class="modes">
+        <button class="mode-card" onclick="openMode('co2')">
+          <div class="mode-title">CO₂ Table</div>
+          <div class="mode-desc">Repos décroissant, apnée fixe. Tolérance au CO₂.</div>
+        </button>
+        <button class="mode-card" onclick="openMode('o2')">
+          <div class="mode-title">O₂ Table</div>
+          <div class="mode-desc">Apnée croissante, repos fixe. Tolérance à l'hypoxie.</div>
+        </button>
+        <button class="mode-card" onclick="openMode('max')">
+          <div class="mode-title">Max Hold</div>
+          <div class="mode-desc">Chronomètre libre pour battre ton record personnel.</div>
+        </button>
+        <button class="mode-card" onclick="showScreen('screen-custom')">
+          <div class="mode-title">Custom Session</div>
+          <div class="mode-desc">Définis ton propre protocole d'entraînement.</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab : Apprendre -->
+    <div class="tab-pane" id="tab-learn">
+      <div class="tab-section-title">Ressources</div>
+      <div class="modes">
+        <button class="mode-card" onclick="showScreen('screen-defs')">
+          <div class="mode-title">Lexique de l'apnée</div>
+          <div class="mode-desc">Hypoxie, hypercapnie, réflexe d'immersion, syncope… tous les termes clés expliqués.</div>
+        </button>
+      </div>
+      <div class="defs-intro" style="margin-top:24px">
+        Inspire. Retiens. Libère.
+      </div>
+    </div>
+
+    <!-- Bottom navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-tab" onclick="showTab('prepare')" id="navtab-prepare">
+        <svg viewBox="0 0 24 24"><path d="M12 4c0 4 -4 5 -4 9a4 4 0 0 0 8 0c0 -4 -4 -5 -4 -9z"/><path d="M9 17l-2 3"/><path d="M15 17l2 3"/></svg>
+        <span class="nav-label">Préparer</span>
+      </button>
+      <button class="nav-tab active" onclick="showTab('practice')" id="navtab-practice">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M9 2h6"/><path d="M12 2v3"/></svg>
+        <span class="nav-label">Pratiquer</span>
+      </button>
+      <button class="nav-tab" onclick="showTab('learn')" id="navtab-learn">
+        <svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H6a2 2 0 0 1 -2 -2z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+        <span class="nav-label">Apprendre</span>
+      </button>
+    </nav>
   </div>
 
   <!-- Definitions -->
@@ -1018,6 +1155,14 @@
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+  }
+
+  function showTab(name) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+    const navBtn = document.getElementById('navtab-' + name);
+    if (navBtn) navBtn.classList.add('active');
   }
 
   function dismissDisclaimer() {
