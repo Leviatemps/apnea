@@ -1,5 +1,5 @@
 // Paean service worker — network-first for HTML/manifest, cache-first for assets
-const VERSION = 'paean-v2';
+const VERSION = 'paean-v3';
 const STATIC_ASSETS = [
   './',
   './index.html',
