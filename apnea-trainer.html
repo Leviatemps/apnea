@@ -13,6 +13,23 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Paean" />
+
+<!-- Open Graph (WhatsApp, Telegram, iMessage, Facebook…) -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Paean — Apnea Trainer" />
+<meta property="og:description" content="Entraînement à l'apnée statique : tables CO₂/O₂, Max Hold, échauffement guidé." />
+<meta property="og:url" content="https://leviatemps.github.io/apnea/" />
+<meta property="og:image" content="https://leviatemps.github.io/apnea/icons/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:locale" content="fr_FR" />
+<meta property="og:site_name" content="Paean" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Paean — Apnea Trainer" />
+<meta name="twitter:description" content="Entraînement à l'apnée statique : tables CO₂/O₂, Max Hold, échauffement guidé." />
+<meta name="twitter:image" content="https://leviatemps.github.io/apnea/icons/og-image.png" />
 <style>
   :root {
     --bg-deep: #050b14;
@@ -851,6 +868,10 @@
           <div class="mode-title">Lexique de l'apnée</div>
           <div class="mode-desc">Hypoxie, hypercapnie, réflexe d'immersion, syncope… tous les termes clés expliqués.</div>
         </button>
+        <button class="mode-card" onclick="shareApp()">
+          <div class="mode-title">Partager l'app</div>
+          <div class="mode-desc">Envoie Paean à un ami pour qu'il puisse l'installer aussi.</div>
+        </button>
       </div>
       <div class="defs-intro" style="margin-top:24px">
         Inspire. Retiens. Libère.
@@ -1157,6 +1178,26 @@
     document.getElementById(id).classList.add('active');
   }
 
+  async function shareApp() {
+    const data = {
+      title: 'Paean — Apnea Trainer',
+      text: 'Application d\'entraînement à l\'apnée statique. Inspire. Retiens. Libère.',
+      url: 'https://leviatemps.github.io/apnea/'
+    };
+    if (navigator.share) {
+      try { await navigator.share(data); } catch (e) { /* user cancelled */ }
+    } else if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(data.url);
+        alert('Lien copié dans le presse-papier :\n' + data.url);
+      } catch (e) {
+        prompt('Copie ce lien :', data.url);
+      }
+    } else {
+      prompt('Copie ce lien :', data.url);
+    }
+  }
+
   function showTab(name) {
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
@@ -1205,6 +1246,18 @@
 
   function vibrate(pattern) {
     if (navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  // ---------- Speech ----------
+  function speak(text) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'fr-FR';
+    utter.rate = 0.85;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    window.speechSynthesis.speak(utter);
   }
 
   // ---------- Modes ----------
@@ -1493,15 +1546,34 @@
   }
 
   // ---------- Session runner ----------
+
+  // Insert a 4-second vocal countdown (3-2-1-Go) before each hold phase
+  function insertCountdownsBeforeHolds(phases) {
+    const result = [];
+    for (const phase of phases) {
+      if (phase.type === 'hold') {
+        result.push({
+          type: 'pre-hold',
+          duration: 4,
+          cycleLabel: phase.cycle ? `Cycle ${phase.cycle}/${phase.total}` : 'Max Hold'
+        });
+      }
+      result.push(phase);
+    }
+    return result;
+  }
+
   function startSession(cfg) {
     ensureAudio();
+    const phasesWithCountdowns = insertCountdownsBeforeHolds(cfg.phases);
     state.session = {
-      cfg,
+      cfg: { ...cfg, phases: phasesWithCountdowns },
       phaseIdx: 0,
       phaseStart: performance.now(),
       holds: [],
       totalHoldTime: 0,
       completedCycles: 0,
+      _lastCountBeat: -1,
     };
     state.paused = false;
     document.getElementById('pauseBtn').textContent = 'Pause';
@@ -1537,6 +1609,39 @@
 
     const circumference = 2 * Math.PI * 94;
     ring.setAttribute('stroke-dasharray', circumference);
+
+    if (phase.type === 'pre-hold') {
+      const beat = Math.min(Math.floor(elapsed), 3); // 0=trois 1=deux 2=un 3=go
+      const remain = phase.duration - elapsed;
+
+      // Speak each word exactly once per beat
+      if (beat !== state.session._lastCountBeat) {
+        state.session._lastCountBeat = beat;
+        if (beat === 0) { speak('trois'); vibrate(80); softBeep(); }
+        else if (beat === 1) { speak('deux'); vibrate(80); softBeep(); }
+        else if (beat === 2) { speak('un'); vibrate(80); softBeep(); }
+        else if (beat === 3) { speak('go'); vibrate([100, 60, 100]); gong(); }
+      }
+
+      const words   = ['3', '2', '1', 'Go !'];
+      const guides  = ['TROIS', 'DEUX', 'UN', 'GO !'];
+      phaseLabel.textContent = 'Décompte';
+      cycleLabel.textContent = phase.cycleLabel || '';
+      timerEl.textContent = words[beat];
+      timerEl.classList.remove('counting-up');
+      timerEl.style.fontSize = beat === 3 ? '52px' : '72px';
+      guide.textContent = guides[beat];
+      pulse.className = 'pulse-circle hold';
+      pulse.style.transform = `scale(${0.75 + 0.08 * beat})`;
+      ring.setAttribute('stroke-dashoffset', circumference);
+
+      if (remain <= 0) {
+        timerEl.style.fontSize = '';
+        pulse.style.transform = '';
+        advancePhase();
+      }
+      return;
+    }
 
     if (phase.type === 'prepare') {
       const remain = phase.duration - elapsed;
@@ -1636,8 +1741,10 @@
 
   function advancePhase() {
     if (!state.session) return;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     state.session.phaseIdx++;
     state.session.phaseStart = performance.now();
+    state.session._lastCountBeat = -1;
     if (state.session.phaseIdx >= state.session.cfg.phases.length) finishSession();
   }
 
@@ -1645,6 +1752,7 @@
     if (!state.session) return;
     state.paused = !state.paused;
     if (state.paused) {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
       state.session._pauseAt = performance.now();
       document.getElementById('pauseBtn').textContent = 'Reprendre';
     } else {
@@ -1656,6 +1764,7 @@
 
   function stopSession() {
     if (!state.session) return;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     const phase = currentPhase();
     if (phase && phase.type === 'max-hold') {
       const elapsed = (performance.now() - state.session.phaseStart) / 1000;
