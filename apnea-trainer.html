@@ -720,6 +720,10 @@
         <div class="mode-title">Max Hold</div>
         <div class="mode-desc">Chronomètre libre pour battre ton record personnel.</div>
       </button>
+      <button class="mode-card" onclick="showScreen('screen-warmup')">
+        <div class="mode-title">Échauffement</div>
+        <div class="mode-desc">Exercices guidés pour préparer ton corps avant l'apnée.</div>
+      </button>
       <button class="mode-card" onclick="showScreen('screen-custom')">
         <div class="mode-title">Custom Session</div>
         <div class="mode-desc">Définis ton propre protocole d'entraînement.</div>
@@ -857,6 +861,42 @@
     </div>
 
     <button class="btn" onclick="showScreen('screen-home')" style="margin-top:8px">Retour à l'accueil</button>
+  </div>
+
+  <!-- Warmup -->
+  <div class="screen" id="screen-warmup">
+    <button class="back-btn" onclick="showScreen('screen-home')">← Retour</button>
+    <div class="preview-header">
+      <div class="preview-title">ÉCHAUFFEMENT</div>
+      <div class="preview-sub">Préparation avant l'apnée</div>
+    </div>
+
+    <div class="defs-intro">
+      Choisis un exercice ou enchaîne la routine complète pour préparer ton corps et ton mental.
+    </div>
+
+    <div class="modes">
+      <button class="mode-card" onclick="startWarmup('full')">
+        <div class="mode-title">Routine complète <span class="tag">~12 min</span></div>
+        <div class="mode-desc">Enchaîne les 4 exercices : respiration, étirements, breath-up, apnées progressives.</div>
+      </button>
+      <button class="mode-card" onclick="startWarmup('diaphragm')">
+        <div class="mode-title">Respiration diaphragmatique <span class="tag">3 min</span></div>
+        <div class="mode-desc">Inspire 4 s, expire 6 s. Active le réflexe parasympathique, ralentit le cœur.</div>
+      </button>
+      <button class="mode-card" onclick="startWarmup('stretch')">
+        <div class="mode-title">Étirement thoracique <span class="tag">2 min</span></div>
+        <div class="mode-desc">Inspire à fond, retiens 10 s en étirant un côté, expire lentement. Assouplit la cage thoracique.</div>
+      </button>
+      <button class="mode-card" onclick="startWarmup('box')">
+        <div class="mode-title">Respiration carrée <span class="tag">3 min</span></div>
+        <div class="mode-desc">4 s inspire, 4 s pause, 4 s expire, 4 s pause. Calme le système nerveux.</div>
+      </button>
+      <button class="mode-card" onclick="startWarmup('progressive')">
+        <div class="mode-title">Apnées progressives <span class="tag">4 min</span></div>
+        <div class="mode-desc">3 paliers d'apnée (30 s, 45 s, 60 s) avec récupération. Réveille le réflexe d'immersion.</div>
+      </button>
+    </div>
   </div>
 
   <!-- Custom -->
@@ -1196,6 +1236,105 @@
     startSession({ name: built.name, phases: built.phases });
   }
 
+  // ---------- Warmup routines ----------
+  function startWarmup(type) {
+    const phases = [{ type: 'prepare', duration: 5 }];
+
+    if (type === 'diaphragm') {
+      phases.push({
+        type: 'breathe', duration: 180,
+        label: 'Diaphragmatique', subtitle: 'Respire par le ventre',
+        inhale: 4, holdIn: 0, exhale: 6, holdOut: 0
+      });
+      startSession({ name: 'Diaphragmatique', phases });
+    }
+    else if (type === 'stretch') {
+      // 4 cycles: inspire max + hold 10s alternating sides + slow exhale
+      const sides = ['Côté gauche', 'Côté droit', 'Côté gauche', 'Côté droit'];
+      sides.forEach((side, i) => {
+        phases.push({
+          type: 'instruct', duration: 4,
+          label: 'Inspire', subtitle: side, guide: 'Inspire à fond'
+        });
+        phases.push({
+          type: 'instruct', duration: 10,
+          label: 'Étire & retiens', subtitle: side, guide: 'Penche-toi sur le côté'
+        });
+        phases.push({
+          type: 'instruct', duration: 8,
+          label: 'Expire', subtitle: side, guide: 'Souffle lentement'
+        });
+        if (i < sides.length - 1) {
+          phases.push({
+            type: 'instruct', duration: 5,
+            label: 'Pause', subtitle: 'Relâche', guide: 'Détends'
+          });
+        }
+      });
+      startSession({ name: 'Étirement thoracique', phases });
+    }
+    else if (type === 'box') {
+      phases.push({
+        type: 'breathe', duration: 180,
+        label: 'Carrée', subtitle: '4 - 4 - 4 - 4',
+        inhale: 4, holdIn: 4, exhale: 4, holdOut: 4
+      });
+      startSession({ name: 'Respiration carrée', phases });
+    }
+    else if (type === 'progressive') {
+      // Breathe-up + 3 holds: 30s, 45s, 60s with 60s rest
+      phases.push({
+        type: 'breathe', duration: 60,
+        label: 'Breathe-up', subtitle: 'Respiration calme',
+        inhale: 5, holdIn: 0, exhale: 7, holdOut: 0
+      });
+      const holds = [30, 45, 60];
+      holds.forEach((h, i) => {
+        phases.push({ type: 'hold', duration: h, cycle: i + 1, total: holds.length });
+        if (i < holds.length - 1) {
+          phases.push({ type: 'rest', duration: 60, cycle: i + 1, total: holds.length });
+        }
+      });
+      startSession({ name: 'Apnées progressives', phases });
+    }
+    else if (type === 'full') {
+      // Routine complète: enchaîne les 4 exercices
+      // 1. Diaphragmatique 2 min
+      phases.push({
+        type: 'breathe', duration: 120,
+        label: '1/4 — Diaphragmatique', subtitle: 'Respire par le ventre',
+        inhale: 4, holdIn: 0, exhale: 6, holdOut: 0
+      });
+      // 2. Étirement thoracique 2 min (2 cycles courts)
+      ['Côté gauche', 'Côté droit'].forEach((side, i) => {
+        phases.push({ type: 'instruct', duration: 4, label: '2/4 — Étirement', subtitle: side, guide: 'Inspire à fond' });
+        phases.push({ type: 'instruct', duration: 10, label: '2/4 — Étirement', subtitle: side, guide: 'Penche-toi, retiens' });
+        phases.push({ type: 'instruct', duration: 8, label: '2/4 — Étirement', subtitle: side, guide: 'Souffle lentement' });
+        if (i === 0) phases.push({ type: 'instruct', duration: 4, label: '2/4 — Étirement', subtitle: 'Pause', guide: 'Relâche' });
+      });
+      // 3. Respiration carrée 2 min
+      phases.push({
+        type: 'breathe', duration: 120,
+        label: '3/4 — Carrée', subtitle: '4 - 4 - 4 - 4',
+        inhale: 4, holdIn: 4, exhale: 4, holdOut: 4
+      });
+      // 4. Apnées progressives
+      phases.push({
+        type: 'breathe', duration: 45,
+        label: '4/4 — Breathe-up', subtitle: 'Avant les apnées',
+        inhale: 5, holdIn: 0, exhale: 7, holdOut: 0
+      });
+      const holds = [30, 45, 60];
+      holds.forEach((h, i) => {
+        phases.push({ type: 'hold', duration: h, cycle: i + 1, total: holds.length });
+        if (i < holds.length - 1) {
+          phases.push({ type: 'rest', duration: 45, cycle: i + 1, total: holds.length });
+        }
+      });
+      startSession({ name: 'Routine complète', phases });
+    }
+  }
+
   function startCustom() {
     const cycles = parseInt(document.getElementById('cfgCycles').value) || 6;
     const hold = parseInt(document.getElementById('cfgHold').value) || 60;
@@ -1302,6 +1441,51 @@
       guide.textContent = 'Hold';
       pulse.className = 'pulse-circle hold';
       ring.setAttribute('stroke-dashoffset', 0);
+    }
+    else if (phase.type === 'breathe') {
+      // Guided breathing with custom inhale/exhale rhythm
+      const remain = phase.duration - elapsed;
+      phaseLabel.textContent = phase.label || 'Breathe';
+      cycleLabel.textContent = phase.subtitle || '';
+      timerEl.textContent = fmt(remain);
+      timerEl.classList.remove('counting-up');
+      const cycleLen = (phase.inhale || 4) + (phase.holdIn || 0) + (phase.exhale || 6) + (phase.holdOut || 0);
+      const t = elapsed % cycleLen;
+      let scale, label;
+      if (t < (phase.inhale || 4)) {
+        const p = t / (phase.inhale || 4);
+        scale = 0.7 + 0.4 * p;
+        label = 'Inspire';
+      } else if (t < (phase.inhale || 4) + (phase.holdIn || 0)) {
+        scale = 1.1;
+        label = 'Retiens';
+      } else if (t < (phase.inhale || 4) + (phase.holdIn || 0) + (phase.exhale || 6)) {
+        const p = (t - (phase.inhale || 4) - (phase.holdIn || 0)) / (phase.exhale || 6);
+        scale = 1.1 - 0.4 * p;
+        label = 'Expire';
+      } else {
+        scale = 0.7;
+        label = 'Pause';
+      }
+      pulse.className = 'pulse-circle';
+      pulse.style.transform = `scale(${scale})`;
+      pulse.style.transition = 'transform 0.4s ease';
+      guide.textContent = label;
+      ring.setAttribute('stroke-dashoffset', circumference * (1 - (phase.duration - remain) / phase.duration));
+      if (remain <= 0) { softBeep(); vibrate(120); pulse.style.transform = ''; advancePhase(); }
+    }
+    else if (phase.type === 'instruct') {
+      // Static instruction with countdown
+      const remain = phase.duration - elapsed;
+      phaseLabel.textContent = phase.label || 'Instruction';
+      cycleLabel.textContent = phase.subtitle || '';
+      timerEl.textContent = fmt(remain);
+      timerEl.classList.remove('counting-up');
+      guide.textContent = phase.guide || '';
+      pulse.className = 'pulse-circle';
+      pulse.style.transform = 'scale(0.85)';
+      ring.setAttribute('stroke-dashoffset', circumference * (1 - (phase.duration - remain) / phase.duration));
+      if (remain <= 0) { softBeep(); vibrate(120); pulse.style.transform = ''; advancePhase(); }
     }
   }
 
