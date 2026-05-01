@@ -1547,15 +1547,15 @@
 
   // ---------- Session runner ----------
 
-  // Insert a 4-second vocal countdown (3-2-1-Go) before each hold phase
+  // Insert a 4-second vocal countdown (3-2-1-Go) before each hold / max-hold phase
   function insertCountdownsBeforeHolds(phases) {
     const result = [];
     for (const phase of phases) {
-      if (phase.type === 'hold') {
+      if (phase.type === 'hold' || phase.type === 'max-hold') {
         result.push({
           type: 'pre-hold',
           duration: 4,
-          cycleLabel: phase.cycle ? `Cycle ${phase.cycle}/${phase.total}` : 'Max Hold'
+          cycleLabel: phase.cycle ? `Cycle ${phase.cycle}/${phase.total}` : ''
         });
       }
       result.push(phase);
@@ -1565,6 +1565,11 @@
 
   function startSession(cfg) {
     ensureAudio();
+    // Unlock speech synthesis on iOS during the user-gesture call stack
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+    }
     const phasesWithCountdowns = insertCountdownsBeforeHolds(cfg.phases);
     state.session = {
       cfg: { ...cfg, phases: phasesWithCountdowns },
@@ -1574,6 +1579,7 @@
       totalHoldTime: 0,
       completedCycles: 0,
       _lastCountBeat: -1,
+      _speechQueued: false,
     };
     state.paused = false;
     document.getElementById('pauseBtn').textContent = 'Pause';
@@ -1614,13 +1620,26 @@
       const beat = Math.min(Math.floor(elapsed), 3); // 0=trois 1=deux 2=un 3=go
       const remain = phase.duration - elapsed;
 
-      // Speak each word exactly once per beat
+      // Queue ALL words at once the very first tick — far more reliable on iOS
+      if (!state.session._speechQueued) {
+        state.session._speechQueued = true;
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          ['trois', 'deux', 'un', 'go'].forEach(word => {
+            const u = new SpeechSynthesisUtterance(word);
+            u.lang = 'fr-FR';
+            u.rate = 0.85;
+            u.volume = 1.0;
+            window.speechSynthesis.speak(u);
+          });
+        }
+      }
+
+      // Per-beat haptic + audio feedback
       if (beat !== state.session._lastCountBeat) {
         state.session._lastCountBeat = beat;
-        if (beat === 0) { speak('trois'); vibrate(80); softBeep(); }
-        else if (beat === 1) { speak('deux'); vibrate(80); softBeep(); }
-        else if (beat === 2) { speak('un'); vibrate(80); softBeep(); }
-        else if (beat === 3) { speak('go'); vibrate([100, 60, 100]); gong(); }
+        if (beat < 3) { vibrate(80); softBeep(); }
+        else { vibrate([100, 60, 100]); gong(); }
       }
 
       const words   = ['3', '2', '1', 'Go !'];
@@ -1745,6 +1764,7 @@
     state.session.phaseIdx++;
     state.session.phaseStart = performance.now();
     state.session._lastCountBeat = -1;
+    state.session._speechQueued = false;
     if (state.session.phaseIdx >= state.session.cfg.phases.length) finishSession();
   }
 
