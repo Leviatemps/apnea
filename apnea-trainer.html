@@ -1547,16 +1547,12 @@
 
   // ---------- Session runner ----------
 
-  // Insert a 4-second vocal countdown (3-2-1-Go) before each hold / max-hold phase
+  // Insert a 1-second "Go!" splash before each hold / max-hold phase
   function insertCountdownsBeforeHolds(phases) {
     const result = [];
     for (const phase of phases) {
       if (phase.type === 'hold' || phase.type === 'max-hold') {
-        result.push({
-          type: 'pre-hold',
-          duration: 4,
-          cycleLabel: phase.cycle ? `Cycle ${phase.cycle}/${phase.total}` : ''
-        });
+        result.push({ type: 'pre-hold', duration: 1 });
       }
       result.push(phase);
     }
@@ -1617,41 +1613,24 @@
     ring.setAttribute('stroke-dasharray', circumference);
 
     if (phase.type === 'pre-hold') {
-      const beat = Math.min(Math.floor(elapsed), 3); // 0=trois 1=deux 2=un 3=go
       const remain = phase.duration - elapsed;
 
-      // Queue ALL words at once the very first tick — far more reliable on iOS
+      // Speak "go" + gong once
       if (!state.session._speechQueued) {
         state.session._speechQueued = true;
-        if (window.speechSynthesis) {
-          window.speechSynthesis.cancel();
-          ['trois', 'deux', 'un', 'go'].forEach(word => {
-            const u = new SpeechSynthesisUtterance(word);
-            u.lang = 'fr-FR';
-            u.rate = 0.85;
-            u.volume = 1.0;
-            window.speechSynthesis.speak(u);
-          });
-        }
+        speak('go');
+        gong();
+        vibrate([100, 60, 100]);
       }
 
-      // Per-beat haptic + audio feedback
-      if (beat !== state.session._lastCountBeat) {
-        state.session._lastCountBeat = beat;
-        if (beat < 3) { vibrate(80); softBeep(); }
-        else { vibrate([100, 60, 100]); gong(); }
-      }
-
-      const words   = ['3', '2', '1', 'Go !'];
-      const guides  = ['TROIS', 'DEUX', 'UN', 'GO !'];
-      phaseLabel.textContent = 'Décompte';
-      cycleLabel.textContent = phase.cycleLabel || '';
-      timerEl.textContent = words[beat];
+      phaseLabel.textContent = 'Go !';
+      cycleLabel.textContent = '';
+      timerEl.textContent = 'Go !';
       timerEl.classList.remove('counting-up');
-      timerEl.style.fontSize = beat === 3 ? '52px' : '72px';
-      guide.textContent = guides[beat];
+      timerEl.style.fontSize = '52px';
+      guide.textContent = '';
       pulse.className = 'pulse-circle hold';
-      pulse.style.transform = `scale(${0.75 + 0.08 * beat})`;
+      pulse.style.transform = 'scale(0.95)';
       ring.setAttribute('stroke-dashoffset', circumference);
 
       if (remain <= 0) {
@@ -1664,25 +1643,43 @@
 
     if (phase.type === 'prepare') {
       const remain = phase.duration - elapsed;
+      // Speak "trois / deux / un" during last 3 seconds
+      const floorRemain = Math.max(0, Math.floor(remain));
+      if (floorRemain >= 1 && floorRemain <= 3 && floorRemain !== state.session._lastCountBeat) {
+        state.session._lastCountBeat = floorRemain;
+        const words = { 3: 'trois', 2: 'deux', 1: 'un' };
+        speak(words[floorRemain]);
+        softBeep();
+        vibrate(80);
+      }
       phaseLabel.textContent = 'Prepare';
       cycleLabel.textContent = 'Installe-toi confortablement';
       timerEl.textContent = fmt(remain);
       timerEl.classList.remove('counting-up');
-      guide.textContent = 'Breathe up';
+      guide.textContent = floorRemain <= 3 && floorRemain >= 1 ? ['', 'UN', 'DEUX', 'TROIS'][floorRemain] : 'Breathe up';
       pulse.className = 'pulse-circle breathe';
       ring.setAttribute('stroke-dashoffset', circumference * (1 - (phase.duration - remain) / phase.duration));
-      if (remain <= 0) { softBeep(); vibrate(100); advancePhase(); }
+      if (remain <= 0) { vibrate(100); advancePhase(); }
     }
     else if (phase.type === 'rest') {
       const remain = phase.duration - elapsed;
+      // Speak "trois / deux / un" during last 3 seconds
+      const floorRemain = Math.max(0, Math.floor(remain));
+      if (floorRemain >= 1 && floorRemain <= 3 && floorRemain !== state.session._lastCountBeat) {
+        state.session._lastCountBeat = floorRemain;
+        const words = { 3: 'trois', 2: 'deux', 1: 'un' };
+        speak(words[floorRemain]);
+        softBeep();
+        vibrate(80);
+      }
       phaseLabel.textContent = 'Recover';
       cycleLabel.textContent = `Cycle ${phase.cycle}/${phase.total} — repos`;
       timerEl.textContent = fmt(remain);
       timerEl.classList.remove('counting-up');
-      guide.textContent = 'Breathe';
+      guide.textContent = floorRemain <= 3 && floorRemain >= 1 ? ['', 'UN', 'DEUX', 'TROIS'][floorRemain] : 'Breathe';
       pulse.className = 'pulse-circle breathe';
       ring.setAttribute('stroke-dashoffset', circumference * (1 - (phase.duration - remain) / phase.duration));
-      if (remain <= 0) { gong(); vibrate([200, 100, 200]); advancePhase(); }
+      if (remain <= 0) { vibrate([200, 100, 200]); advancePhase(); }
     }
     else if (phase.type === 'hold') {
       const remain = phase.duration - elapsed;
