@@ -123,17 +123,27 @@
     border-radius: 16px;
     padding: 20px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.18s ease;
     text-align: left;
     color: var(--white);
     font-family: inherit;
     width: 100%;
+    will-change: transform;
   }
 
-  .mode-card:hover, .mode-card:active {
-    border-color: var(--cyan);
+  .mode-card:hover {
+    border-color: rgba(0, 229, 255, 0.5);
     background: rgba(0, 229, 255, 0.06);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 229, 255, 0.08);
+  }
+
+  .mode-card:active {
+    transform: scale(0.98);
+    background: rgba(0, 229, 255, 0.09);
+    border-color: var(--cyan);
+    box-shadow: none;
+    transition: all 0.08s ease;
   }
 
   .mode-title {
@@ -161,11 +171,11 @@
   }
 
   /* Screens */
-  .screen { display: none; animation: fadeIn 0.3s ease; }
+  .screen { display: none; animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
   .screen.active { display: flex; flex-direction: column; flex: 1; }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
@@ -226,10 +236,11 @@
     border-radius: 50%;
     background: radial-gradient(circle at center, rgba(0, 229, 255, 0.25) 0%, rgba(0, 229, 255, 0.05) 50%, transparent 80%);
     transition: transform 4s ease-in-out, opacity 0.5s ease;
+    will-change: transform, opacity;
   }
 
   .pulse-circle.breathe {
-    animation: breathe 8s ease-in-out infinite;
+    animation: breathe 8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
 
   .pulse-circle.hold {
@@ -238,8 +249,8 @@
   }
 
   @keyframes breathe {
-    0%, 100% { transform: scale(0.7); }
-    50% { transform: scale(1.05); }
+    0%, 100% { transform: scale(0.7); opacity: 0.65; }
+    50% { transform: scale(1.08); opacity: 1; }
   }
 
   .timer-content {
@@ -275,7 +286,8 @@
   }
 
   .btn {
-    flex: 1;
+    flex: none;
+    width: 100%;
     padding: 16px;
     border-radius: 14px;
     border: 1px solid rgba(0, 229, 255, 0.2);
@@ -287,7 +299,12 @@
     letter-spacing: 1px;
     text-transform: uppercase;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
+  }
+
+  .controls .btn {
+    flex: 1;
+    width: auto;
   }
 
   .btn:hover, .btn:active {
@@ -325,9 +342,10 @@
     font-family: inherit;
     margin-bottom: 8px;
     align-self: flex-start;
+    transition: color 0.2s ease, opacity 0.2s ease;
   }
 
-  .back-btn:hover { color: var(--cyan); }
+  .back-btn:hover { color: var(--cyan); opacity: 0.9; }
 
   /* Custom form */
   .form-group {
@@ -551,7 +569,7 @@
     color: var(--cyan);
   }
 
-  .nav-tab.active::before {
+  .nav-tab::before {
     content: '';
     position: absolute;
     top: -10px;
@@ -560,11 +578,19 @@
     background: var(--cyan);
     border-radius: 2px;
     box-shadow: 0 0 8px var(--cyan);
+    opacity: 0;
+    transform: scaleX(0.4);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+
+  .nav-tab.active::before {
+    opacity: 1;
+    transform: scaleX(1);
   }
 
   .tab-pane {
     display: none;
-    animation: fadeIn 0.25s ease;
+    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .tab-pane.active {
@@ -1097,7 +1123,7 @@
     </div>
     <div class="cycles-list" id="cyclesList"></div>
 
-    <button class="btn primary" onclick="startFromPreview()" style="padding:12px;font-size:10.5px;">Démarrer la session</button>
+    <button class="btn primary" onclick="startFromPreview()">Démarrer la session</button>
   </div>
 
   <!-- Session -->
@@ -1174,8 +1200,23 @@
   }
 
   function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    const active = document.querySelector('.screen.active');
+    const next = document.getElementById(id);
+    if (!active || active === next) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      next.classList.add('active');
+      return;
+    }
+    active.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+    active.style.opacity = '0';
+    active.style.transform = 'translateY(-10px)';
+    setTimeout(() => {
+      active.classList.remove('active');
+      active.style.transition = '';
+      active.style.opacity = '';
+      active.style.transform = '';
+      next.classList.add('active');
+    }, 150);
   }
 
   async function shareApp() {
