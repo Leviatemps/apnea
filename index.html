@@ -13,6 +13,23 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Paean" />
+
+<!-- Open Graph (WhatsApp, Telegram, iMessage, Facebook…) -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Paean — Apnea Trainer" />
+<meta property="og:description" content="Entraînement à l'apnée statique : tables CO₂/O₂, Max Hold, échauffement guidé." />
+<meta property="og:url" content="https://leviatemps.github.io/apnea/" />
+<meta property="og:image" content="https://leviatemps.github.io/apnea/icons/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:locale" content="fr_FR" />
+<meta property="og:site_name" content="Paean" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Paean — Apnea Trainer" />
+<meta name="twitter:description" content="Entraînement à l'apnée statique : tables CO₂/O₂, Max Hold, échauffement guidé." />
+<meta name="twitter:image" content="https://leviatemps.github.io/apnea/icons/og-image.png" />
 <style>
   :root {
     --bg-deep: #050b14;
@@ -851,6 +868,10 @@
           <div class="mode-title">Lexique de l'apnée</div>
           <div class="mode-desc">Hypoxie, hypercapnie, réflexe d'immersion, syncope… tous les termes clés expliqués.</div>
         </button>
+        <button class="mode-card" onclick="shareApp()">
+          <div class="mode-title">Partager l'app</div>
+          <div class="mode-desc">Envoie Paean à un ami pour qu'il puisse l'installer aussi.</div>
+        </button>
       </div>
       <div class="defs-intro" style="margin-top:24px">
         Inspire. Retiens. Libère.
@@ -1076,7 +1097,7 @@
     </div>
     <div class="cycles-list" id="cyclesList"></div>
 
-    <button class="btn primary" onclick="startFromPreview()">Démarrer la session</button>
+    <button class="btn primary" onclick="startFromPreview()" style="padding:12px;font-size:10.5px;">Démarrer la session</button>
   </div>
 
   <!-- Session -->
@@ -1155,6 +1176,26 @@
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+  }
+
+  async function shareApp() {
+    const data = {
+      title: 'Paean — Apnea Trainer',
+      text: 'Application d\'entraînement à l\'apnée statique. Inspire. Retiens. Libère.',
+      url: 'https://leviatemps.github.io/apnea/'
+    };
+    if (navigator.share) {
+      try { await navigator.share(data); } catch (e) { /* user cancelled */ }
+    } else if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(data.url);
+        alert('Lien copié dans le presse-papier :\n' + data.url);
+      } catch (e) {
+        prompt('Copie ce lien :', data.url);
+      }
+    } else {
+      prompt('Copie ce lien :', data.url);
+    }
   }
 
   function showTab(name) {
